@@ -5,6 +5,7 @@
 	$json = $geojson = $detail_json = "";
 	echo "php开始";
 	if ($_SERVER["REQUEST_METHOD"] == "POST"){
+		echo "php post";
 		$keyword = $_POST["keyword"];
 		$category = $_POST["category"];
 		if (isset($_POST["Nearby"])){
@@ -33,7 +34,10 @@
 		}
 		#$geojson = json_decode($_POST["geojson"]);
 		$json = get_items($keyword, $category, $condition, $Nearby, $shipping, $distance, $zip_input);
-		//exit(json_encode($json));
+
+		echo "api call";
+
+		echo $json->{"findItemsAdvancedResponse"}[0]->{"ack"}[0];
 
 	}
 
@@ -218,6 +222,7 @@
 					</li>
 				</ul>
 			</div>
+			<div id="item_id" style="visibility: hidden"></div>
 			<div id="buttons">
 				<button id="search" name="search" type="submit">Search</button>
 				<input id="clear" name="clear" type="button" onclick="clearpage()" value="Clear">
@@ -240,9 +245,16 @@
 	var here;
 	var position;
 	var ha = 'debug1';
-	var hhaha = "";
-	ebay_string = JSON.stringify(<?php echo json_encode($json) ?>);//if not stringfy will return an error
-	ebay_json = JSON.parse(ebay_string);
+	if(<?php echo json_encode($json) ?> != ""){
+		var ebay_string = JSON.stringify(<?php echo json_encode($json) ?>);//if not stringfy will return an error
+		alert(ebay_string);
+		var ebay_json = JSON.parse(ebay_string); 
+		alert("获取到了ebay_json");
+		show_result(ebay_json);
+
+	}
+
+
 	//alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
 
 	if (xhttp.readyState == 4 && xhttp.status == 200) {
@@ -255,10 +267,13 @@
 		}
 		/*document.getElementById("geojson").value = JSON.stringify(here);*/
 	}
+	alert("获取到了地理位置");
 
 	form.addEventListener("submit", function(event) {
-		alert("event listener start");
-		show_result(ebay_json);
+
+		alert("addEventListener");
+		alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
+		//show_result(ebay_json);
 		event.preventDefault();
 		var url = form.action;
 		var params = "";
@@ -272,14 +287,16 @@
 		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 		xhttp.send(params);
 		geo_info = JSON.parse(xhttp.responseText);
+		alert("获取到了地理位置json");
 		here = geo_info["geojson"];
 		
 		
 	}, false);
 
 	function clearpage() {
+		//document.getElementById('keyword').value="";
+
 		form.reset();
-		zip.disabled = true;
 		remove_all_child("results");
 	}
 	function change_list(){
@@ -302,23 +319,31 @@
 		document.getElementById('zip_radio').checked=true;
 		document.getElementById('zip_input').disabled=false;
 	}
+	function resumit(){
+
+	}
 	function show_result(ebay_json) {
-		alert("show_result");
+
+		alert("结果展示");
 		if (ebay_json == null) {
 			alert('result null')
 			return;
 		}
-		// alert("1");
+		alert("1");
 		result_div = document.getElementById("results");
-		if (result_div.firstChild) {
+		/*if (result_div.firstChild) {
 			remove_all_child("results");
-		}
-		// alert("2");
+		}*/
+		alert("2");
+		alert(ebay_json);
+		// alert(ebay_json.findItemsAdvancedResponse[0]);
+		alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
 		if(ebay_json.findItemsAdvancedResponse[0]==='undefined'){
 			alert('error');
 		}
-		alert(ebay_json.findItemsAdvancedResponse[0].searchResult[0]["@count"]);
+		//alert(ebay_json.findItemsAdvancedResponse[0].searchResult[0]["@count"]);
 
+		alert("3");
 		if (ebay_json.findItemsAdvancedResponse[0].searchResult[0]["@count"]=="0"){
 			var node = document.createElement("div");
 			node.innerHTML = "<b>No Records has been found!<b>";
@@ -326,7 +351,7 @@
 			result_div.appendChild(node);
 			return;
 		}
-		// alert("3");
+		alert("4");
 
 		item_list = ebay_json.findItemsAdvancedResponse[0].searchResult[0]["item"];
 
@@ -355,9 +380,8 @@
 		th.appendChild(thc6);
 		th.appendChild(thc7);
 		table.appendChild(th);
+		alert("表头建好了");
 		// alert("5");
-
-
 		for(i=0;i<item_list.length;i++){
 			cur_item = item_list[i];
 			var tr = table.insertRow();
@@ -377,7 +401,13 @@
 			//fill Name
 			var td = tr.insertCell();
 			if("title" in cur_item){
-				td.innerHTML = cur_item["title"];
+				var a = document.createElement('a');
+				var linkText = document.createTextNode(cur_item["title"]);
+				a.appendChild(linkText);
+				a.href = cur_item["viewItemURL"];
+				a.onclick = resumit();
+
+				td.appendChild(a);
 			}
 			else{
 				td.innerHTML = "N/A";
@@ -397,11 +427,7 @@
 				td.innerHTML = "N/A";
 			}
 			
-
-			//fill Condition
 			var td = tr.insertCell();
-			//td.innerHTML = cur_item["condition"][0]["conditionDisplayName"];
-			//alert(cur_item["condition"][0]["conditionDisplayName"]);
 			if("condition" in cur_item && "conditionDisplayName" in cur_item["condition"][0]){
 				td.innerHTML = cur_item["condition"][0]["conditionDisplayName"];
 			}
@@ -422,7 +448,6 @@
 			table.appendChild(tr);
 		}
 		result_div.appendChild(table);
-		alert("show_result_end");
 	}
 </script>
 
