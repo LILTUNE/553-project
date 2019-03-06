@@ -1,46 +1,51 @@
 
 <?php
-	$keyword = $category = $Nearby = $distance = $zip_input = "";
+	$keyword = $category = $Nearby = $distance = $zip_input = $item_id= "";
 	$condition = $shipping = [];
 	$json = $geojson = $detail_json = "";
 	echo "php开始";
 	if ($_SERVER["REQUEST_METHOD"] == "POST"){
-		echo "php post";
-		$keyword = $_POST["keyword"];
-		$category = $_POST["category"];
-		if (isset($_POST["Nearby"])){
-			$Nearby = $POST["Nearby"];
-		}
-		if (isset($_POST["distance"])){
-			$distance=$_POST["distance"];
-		}
-		else{
-			$distance=10;
-		}
-		if (isset($_POST["zip_input"])) {
-			$zip_input = $_POST["zip_input"];
-		}
-		if (isset($_POST["condition"])) {
-			$condition = $_POST["condition"];
+		//echo "in";
+		//echo $_POST["item_id"] + "item id";
+		if(!empty($_POST["item_id"])){
+			echo "item_id";
+			echo $_POST["item_id"];
+			$item_id = $_POST["item_id"];
+			$detail_json = get_detail($item_id);
 		}
 		else{
-			$condition = array("New", "Used", "Unspecified");
+			echo "php post";
+			$keyword = $_POST["keyword"];
+			$category = $_POST["category"];
+			if (isset($_POST["Nearby"])){
+				$Nearby = $POST["Nearby"];
+			}
+			if (isset($_POST["distance"])){
+				$distance=$_POST["distance"];
+			}
+			else{
+				$distance=10;
+			}
+			if (isset($_POST["zip_input"])) {
+				$zip_input = $_POST["zip_input"];
+			}
+			if (isset($_POST["condition"])) {
+				$condition = $_POST["condition"];
+			}
+			else{
+				$condition = array("New", "Used", "Unspecified");
+			}
+			if (isset($_POST["shipping"])) {
+				$shipping = $_POST["shipping"];
+			}
+			else{
+				$shipping = array("FreeShippingOnly", "LocalPickupOnly");
+			}
+			//$geojson = json_decode($_POST["geojson"]);
+			$json = get_items($keyword, $category, $condition, $Nearby, $shipping, $distance, $zip_input);
+			//echo $json->{"findItemsAdvancedResponse"}[0]->{"ack"}[0];
 		}
-		if (isset($_POST["shipping"])) {
-			$shipping = $_POST["shipping"];
-		}
-		else{
-			$shipping = array("FreeShippingOnly", "LocalPickupOnly");
-		}
-		#$geojson = json_decode($_POST["geojson"]);
-		$json = get_items($keyword, $category, $condition, $Nearby, $shipping, $distance, $zip_input);
-
-		echo "api call";
-
-		echo $json->{"findItemsAdvancedResponse"}[0]->{"ack"}[0];
-
 	}
-
 	/*foreach($_POST as $key => $value) {
 		if ($key !== "search") {
 			echo $key . " = " . $value . "\n";
@@ -51,8 +56,6 @@
 		$url = "https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.0.0&SECURITY-APPNAME=TongLiu-FirstPHP-PRD-d16e5579d-8138441b&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD&paginationInput.entriesPerPage=20";
 		$url .= "&keywords=".urlencode($keyword);
 		if($zip_input != ""){
-			echo "hhaahha";
-			echo "zip_input";
 			$url .= "&buyerPostalCode=".$zip_input;
 		}
 		if($Nearby != ""){
@@ -65,7 +68,6 @@
 				++$filter_num;
 			}
 		}
-
 		switch ($category) {
 		    case "Art":
 		        $url .= "&"."category_id=550";
@@ -92,13 +94,6 @@
 		        $url .= "&"."category_id=1249";
 		        break;
 		}
-		/*echo '--------------';
-		foreach($condition as $con){
-			echo $con;
-		}
-		echo '--------------';*/
-
-		
 		$url .= "&itemFilter(".$filter_num.").name=condition";
 		foreach ($condition as $con){
 			$url .= "&itemFilter(".$filter_num.").value=".$con;
@@ -116,6 +111,12 @@
 		//$url="https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.0.0&SECURITY-APPNAME=TongLiu-FirstPHP-PRD-d16e5579d-8138441b&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD&paginationInput.entriesPerPage=20&keywords=".urlencode($keyword)."";
 		$json = json_decode(file_get_contents($url));
 		return $json;
+	}
+	function get_detail($item_id){
+		$url="http://open.api.ebay.com/shopping?callname=GetSingleItem&responseencoding=JSON&appid=TongLiu-FirstPHP-PRD-d16e5579d-8138441b&siteid=0&version=967&ItemID=".$item_id."&IncludeSelector=Description,Details,ItemSpecifics";
+		echo $url;
+		$detail_json = json_decode(file_get_contents($url));
+		return $detail_json;
 	}
 ?>
 <html>
@@ -145,7 +146,6 @@
 	#location_list{
 		margin-top: -30px;
 		margin-left: 121px;
-
 	}
 	.gray{
 		pointer-events: none;
@@ -173,7 +173,7 @@
 		height: 40px;
 		border: 1px solid;
 		border-color: rgb(195, 195, 195);
-	}AAAAZ
+	}
 </style>
 <body>
 	<div id="formbox">
@@ -222,9 +222,9 @@
 					</li>
 				</ul>
 			</div>
-			<div id="item_id" style="visibility: hidden"></div>
+			<input id="item_id" name="item_id" style="visibility: hidden"></input>
 			<div id="buttons">
-				<button id="search" name="search" type="submit">Search</button>
+				<button id="search" name="search" type="submit" disabled="ture">Search</button>
 				<input id="clear" name="clear" type="button" onclick="clearpage()" value="Clear">
 			</div>
 			</fieldset>
@@ -235,16 +235,13 @@
 
 <script type="text/javascript">
 	var form = document.getElementById("search_form");
-	var geojson = null;
-	var search = document.getElementById("search");
+	
 	var xhttp = new XMLHttpRequest();
-	xhttp.open("GET", "http://ip-api.com/json", false);
-	xhttp.send();
-	var geo_info;
+	var geojson = request_Location_Json();
+	alert("获取到了地理位置");	
+	var search = document.getElementById("search");
+	search.disabled = false;
 	var results;
-	var here;
-	var position;
-	var ha = 'debug1';
 	if(<?php echo json_encode($json) ?> != ""){
 		var ebay_string = JSON.stringify(<?php echo json_encode($json) ?>);//if not stringfy will return an error
 		alert(ebay_string);
@@ -253,46 +250,38 @@
 		show_result(ebay_json);
 
 	}
-
-
+	if(<?php echo json_encode($detail_json) ?> != ""){
+			var detail_string = JSON.stringify(<?php echo json_encode($detail_json) ?>);//if not stringfy will return an error
+			alert("detail_json的内容是");
+			alert(detail_string);
+			var detail_json = JSON.parse(detail_string); 
+			alert("获取到了detail_json");
+			alert(detail_json)
+			show_detail(detail_json);
+		}
+		else{
+			alert("detail_json是空的！");
+	}
 	//alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
 
-	if (xhttp.readyState == 4 && xhttp.status == 200) {
-		geojson = JSON.parse(xhttp.responseText);
-		console.log(geojson);
-		search.disabled = false;
-		here = {
-			"lat": geojson["lat"],
-			"lng": geojson["lon"]
-		}
-		/*document.getElementById("geojson").value = JSON.stringify(here);*/
-	}
-	alert("获取到了地理位置");
+
+
 
 	form.addEventListener("submit", function(event) {
-
 		alert("addEventListener");
 		alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
-		//show_result(ebay_json);
 		event.preventDefault();
-		var url = form.action;
-		var params = "";
-		var data = new FormData(form);
-		for (const entry of data) {
-			params += entry[0] + "=" + encodeURIComponent(entry[1]) + "&";
-		}
-		params = params.slice(0, -1);
-		var xhttp = new XMLHttpRequest();
-		xhttp.open("POST", url, false);
-		xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-		xhttp.send(params);
-		geo_info = JSON.parse(xhttp.responseText);
-		alert("获取到了地理位置json");
-		here = geo_info["geojson"];
-		
-		
 	}, false);
 
+	function request_Location_Json(){
+		var url = "http://ip-api.com/json/";
+		var xmlHttp = new XMLHttpRequest();
+		xmlHttp.open( "GET", url, false );
+		xmlHttp.send();
+		var loca_json = xmlHttp.responseText;     
+		var loca_data = JSON.parse(loca_json);
+		return loca_data;
+	}
 	function clearpage() {
 		//document.getElementById('keyword').value="";
 
@@ -319,8 +308,52 @@
 		document.getElementById('zip_radio').checked=true;
 		document.getElementById('zip_input').disabled=false;
 	}
-	function resumit(){
-
+	function resubmit(element_id){
+		document.getElementById("item_id").value=element_id;
+		document.getElementById("search_form").submit();
+		
+	}
+	function show_detail(detail_json){
+		alert('show detail');
+		if (detail_json == null) {
+			alert('detail_json null')
+			return;
+		}
+		alert(detail_json["Item"]);
+		result_div = document.getElementById("results");
+		//create header for deatail table
+		var table = document.createElement("table");
+		var th = table.insertRow();
+		var thc1 = document.createElement("td");
+		var thc2 = document.createElement("td");
+		thc1.innerHTML = "<b>HTML Key</b>";
+		thc2.innerHTML = "<b>API service response</b>";
+		th.appendChild(thc1);
+		th.appendChild(thc2);
+		table.appendChild(th);
+		var Item_obj = detail_json["Item"];
+		var keys =["Photo", "Title", "Subtitle", "Price","Location", "Seller", "Return Policy", "NameValueList"];
+		// Photo row
+		if("Photo" in Item_obj){
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "Photo";
+			var td = tr.insertCell();
+			var image = document.createElement("img");
+			image.src = Item_obj["PictureURL"];
+			td.appendChild(image);
+		}
+		// Title
+		if("Title" in Item_obj){
+			
+		}
+		// SubTitle
+		// Price
+		// Location row
+		// Seller
+		// Return policy
+		// Item Specifics(Name)
+		result_div.appendChild(table);
 	}
 	function show_result(ebay_json) {
 
@@ -329,21 +362,15 @@
 			alert('result null')
 			return;
 		}
-		alert("1");
 		result_div = document.getElementById("results");
 		/*if (result_div.firstChild) {
 			remove_all_child("results");
 		}*/
-		alert("2");
-		alert(ebay_json);
-		// alert(ebay_json.findItemsAdvancedResponse[0]);
 		alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
 		if(ebay_json.findItemsAdvancedResponse[0]==='undefined'){
 			alert('error');
 		}
 		//alert(ebay_json.findItemsAdvancedResponse[0].searchResult[0]["@count"]);
-
-		alert("3");
 		if (ebay_json.findItemsAdvancedResponse[0].searchResult[0]["@count"]=="0"){
 			var node = document.createElement("div");
 			node.innerHTML = "<b>No Records has been found!<b>";
@@ -351,7 +378,7 @@
 			result_div.appendChild(node);
 			return;
 		}
-		alert("4");
+		//alert("4");
 
 		item_list = ebay_json.findItemsAdvancedResponse[0].searchResult[0]["item"];
 
@@ -380,7 +407,6 @@
 		th.appendChild(thc6);
 		th.appendChild(thc7);
 		table.appendChild(th);
-		alert("表头建好了");
 		// alert("5");
 		for(i=0;i<item_list.length;i++){
 			cur_item = item_list[i];
@@ -404,15 +430,16 @@
 				var a = document.createElement('a');
 				var linkText = document.createTextNode(cur_item["title"]);
 				a.appendChild(linkText);
-				a.href = cur_item["viewItemURL"];
-				a.onclick = resumit();
+				//a.href = cur_item["viewItemURL"];
+				a.addEventListener("click", function(){
+					resubmit(cur_item["itemId"]);
+				});
 
 				td.appendChild(a);
 			}
 			else{
 				td.innerHTML = "N/A";
 			}
-			
 
 			//fill Price
 			var td = tr.insertCell();
@@ -443,7 +470,6 @@
 			else{
 				td.innerHTML = "N/A"
 			}
-			//td.innerHTML = "<b>Index</b>";
 
 			table.appendChild(tr);
 		}
