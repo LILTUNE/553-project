@@ -3,7 +3,6 @@
 	$keyword = $category = $Nearby = $distance = $zip_input = $item_id= "";
 	$condition = $shipping = [];
 	$json = $geojson = $detail_json = "";
-	echo "php开始";
 	if ($_SERVER["REQUEST_METHOD"] == "POST"){
 		//echo "in";
 		//echo $_POST["item_id"] + "item id";
@@ -174,6 +173,12 @@
 		border: 1px solid;
 		border-color: rgb(195, 195, 195);
 	}
+
+	.arrow{
+		width : 50px;
+		height: 25px;
+		vertical-align: middle;
+	}
 </style>
 <body>
 	<div id="formbox">
@@ -264,9 +269,6 @@
 	}
 	//alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
 
-
-
-
 	form.addEventListener("submit", function(event) {
 		alert("addEventListener");
 		alert(ebay_json.findItemsAdvancedResponse[0].ack[0]);
@@ -334,10 +336,10 @@
 		var Item_obj = detail_json["Item"];
 		var keys =["Photo", "Title", "Subtitle", "Price","Location", "Seller", "Return Policy", "NameValueList"];
 		// Photo row
-		if("Photo" in Item_obj){
+		if("PictureURL" in Item_obj){
 			var tr = table.insertRow();
 			var td = tr.insertCell();
-			td.innerHTML = "Photo";
+			td.innerHTML = "<b>Photo</b>";
 			var td = tr.insertCell();
 			var image = document.createElement("img");
 			image.src = Item_obj["PictureURL"];
@@ -345,15 +347,100 @@
 		}
 		// Title
 		if("Title" in Item_obj){
-			
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Title</b>"
+			var td = tr.insertCell();
+			td.innerHTML = Item_obj["Title"];
 		}
 		// SubTitle
+		if("Subtitle" in Item_obj){
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Subtitle</b>";
+			var td = tr.insertCell();
+			td.innerHTML = Item_obj["Subtitle"];
+		}
 		// Price
+		if("CurrentPrice" in Item_obj && "value" in Item_obj["CurrentPrice"] && "CurrencyID" in Item_obj["CurrentPrice"]){// hasProperty
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Price</b>";
+			var td = tr.insertCell();
+			td.innerHTML = Item_obj["CurrentPrice"]["value"]+Item_obj["CurrentPrice"]["CurrencyID"];
+		}
 		// Location row
+		if("Location" in Item_obj || "postalCode" in Item_obj){
+			var location = "";
+			if("Location" in Item_obj){
+				location = Item_obj["Location"];
+			}
+			var postalcode = "";
+			if("postalcode" in Item_obj){
+				postalcode = Item_obj["postalcode"];
+			}
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Location</b>";
+			var td = tr.insertCell();
+			td.innerHTML = location + "," + postalcode;
+		}
 		// Seller
+		if("Seller" in Item_obj && "UserID" in Item_obj["Seller"]){
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Seller</b>";
+			var td = tr.insertCell();
+			td.innerHTML = Item_obj["Seller"]["UserID"];
+		}
 		// Return policy
+		if("ReturnPilicy" in Item_obj && "ReturnsAccepted" in Item_obj["ReturnPilicy"]){
+			var tr = table.insertRow();
+			var td = tr.insertCell();
+			td.innerHTML = "<b>Return Policy</b>";
+			var td = tr.insertCell();
+			td.innerHTML = Item_obj["ReturnPilicy"]["ReturnsAccepted"];
+		}
 		// Item Specifics(Name)
+		if("ItemSpecifics" in Item_obj && "NameValueList" in Item_obj["ItemSpecifics"]){
+			var NameValueList = Item_obj["ItemSpecifics"]["NameValueList"];
+			var i;
+			for(i=0; i<NameValueList.length; i++){
+				var tr = table.insertRow();
+				var td = tr.insertCell();
+				td.innerHTML = "<b>"+NameValueList[i]["Name"]+"</b>";
+				var td = tr.insertCell();
+				td.innerHTML = NameValueList[i]["Value"];
+			}
+		}
 		result_div.appendChild(table);
+
+		//add arrow after table
+		var show_seller = document.createElement("div");
+		var p1 = document.createElement("p");
+		var content1 = document.createTextNode("click to show seller message");
+		//content1.style.color = "rgb(182,182,182)";
+		p1.appendChild(content1);
+		var arrow1 = document.createElement("img");
+		arrow1.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
+		arrow1.className = "arrow";
+		show_seller.appendChild(p1);
+		show_seller.appendChild(arrow1);
+		result_div.appendChild(show_seller);
+
+		//2nd arrow
+		var show_similar = document.createElement("div");
+		var p2 = document.createElement("p");
+		var content2 = document.createTextNode("click to show similar items");
+		//content1.style.color = "rgb(182,182,182)";
+		p2.appendChild(content2);
+		var arrow2 = document.createElement("img");
+		arrow2.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
+		arrow2.className = "arrow";
+		show_similar.appendChild(p2);
+		show_similar.appendChild(arrow2);
+		result_div.appendChild(show_similar);
+
 	}
 	function show_result(ebay_json) {
 
