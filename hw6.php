@@ -2,7 +2,7 @@
 <?php
 	$keyword = $category = $Nearby = $distance = $zip_input = $item_id= "";
 	$condition = $shipping = [];
-	$json = $geojson = $detail_json = "";
+	$json = $geojson = $detail_json = $similar_json = "";
 	if ($_SERVER["REQUEST_METHOD"] == "POST"){
 		//echo "in";
 		//echo $_POST["item_id"] + "item id";
@@ -11,6 +11,9 @@
 			echo $_POST["item_id"];
 			$item_id = $_POST["item_id"];
 			$detail_json = get_detail($item_id);
+			file_put_contents("detail.html", $detail_json->{"Item"}->{"Description"});
+			echo "成功写文件";
+			$similar_json = get_similar($item_id);
 		}
 		else{
 			echo "php post";
@@ -116,6 +119,12 @@
 		echo $url;
 		$detail_json = json_decode(file_get_contents($url));
 		return $detail_json;
+	}
+	function get_similar($item_id){
+		$url="http://svcs.ebay.com/MerchandisingService?OPERATION-NAME=getSimilarItems&SERVICE-NAME=MerchandisingService&SERVICE-VERSION=1.1.0&CONSUMER-ID=TongLiu-FirstPHP-PRD-d16e5579d-8138441b&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD&itemId=".$item_id."&maxResults=8";
+		echo $url;
+		$similar_json = json_decode(file_get_contents($url));
+		return $similar_json;
 	}
 ?>
 <html>
@@ -243,7 +252,6 @@
 	
 	var xhttp = new XMLHttpRequest();
 	var geojson = request_Location_Json();
-	alert("获取到了地理位置");	
 	var search = document.getElementById("search");
 	search.disabled = false;
 	var results;
@@ -251,18 +259,21 @@
 		var ebay_string = JSON.stringify(<?php echo json_encode($json) ?>);//if not stringfy will return an error
 		alert(ebay_string);
 		var ebay_json = JSON.parse(ebay_string); 
-		alert("获取到了ebay_json");
 		show_result(ebay_json);
 
 	}
 	if(<?php echo json_encode($detail_json) ?> != ""){
 			var detail_string = JSON.stringify(<?php echo json_encode($detail_json) ?>);//if not stringfy will return an error
-			alert("detail_json的内容是");
-			alert(detail_string);
 			var detail_json = JSON.parse(detail_string); 
 			alert("获取到了detail_json");
 			alert(detail_json)
-			show_detail(detail_json);
+			var similar_json = "";
+
+			if(<?php echo json_encode($similar_json)?> != ""){
+				similar_string = JSON.stringify(<?php echo json_encode($similar_json) ?>);
+				var similar_json = JSON.parse(similar_string);
+			}
+			show_detail(detail_json,similar_json);
 		}
 		else{
 			alert("detail_json是空的！");
@@ -315,7 +326,7 @@
 		document.getElementById("search_form").submit();
 		
 	}
-	function show_detail(detail_json){
+	function show_detail(detail_json, similar_json){
 		alert('show detail');
 		if (detail_json == null) {
 			alert('detail_json null')
@@ -334,7 +345,8 @@
 		th.appendChild(thc2);
 		table.appendChild(th);
 		var Item_obj = detail_json["Item"];
-		var keys =["Photo", "Title", "Subtitle", "Price","Location", "Seller", "Return Policy", "NameValueList"];
+
+		//store file by php
 		// Photo row
 		if("PictureURL" in Item_obj){
 			var tr = table.insertRow();
@@ -424,8 +436,15 @@
 		var arrow1 = document.createElement("img");
 		arrow1.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
 		arrow1.className = "arrow";
+		arrow1.onclick = function () {
+			arrow1.src = "http://csci571.com/hw/hw6/images/arrow_up.png";
+			document.getElementById("detail_iframe").setAttribute("visibility", "visible");
+		};
+		var detail_iframe = document.createElement("div");
+		detail_iframe.innerHTML = "<iframe id=detail_iframe src=detail.html visibility=hidden></iframe>";
 		show_seller.appendChild(p1);
 		show_seller.appendChild(arrow1);
+		show_seller.appendChild(detail_iframe)
 		result_div.appendChild(show_seller);
 
 		//2nd arrow
@@ -437,14 +456,22 @@
 		var arrow2 = document.createElement("img");
 		arrow2.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
 		arrow2.className = "arrow";
+		arrow2.onclick = function(){
+			arrow2.src = "http://csci571.com/hw/hw6/images/arrow_up.png";
+			if(similar_json==""){
+				alert("没有相似内容");
+			}
+			else{
+				alert(similar_json);
+			}
+		}
 		show_similar.appendChild(p2);
 		show_similar.appendChild(arrow2);
 		result_div.appendChild(show_similar);
 
+
 	}
 	function show_result(ebay_json) {
-
-		alert("结果展示");
 		if (ebay_json == null) {
 			alert('result null')
 			return;
