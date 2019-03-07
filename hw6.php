@@ -6,6 +6,7 @@
 	if ($_SERVER["REQUEST_METHOD"] == "POST"){
 
 		echo"submit";
+		echo $_POST["Nearby"];
 		if(!empty($_POST["item_id"])){
 			echo "item_id:"+ $_POST["item_id"];
 			$item_id = $_POST["item_id"];
@@ -17,7 +18,10 @@
 			$keyword = $_POST["keyword"];
 			$category = $_POST["category"];
 			if (isset($_POST["Nearby"])){
-				$Nearby = $POST["Nearby"];
+				$Nearby = $_POST["Nearby"];
+			}
+			if($zip_input != ""){
+				$url .= "&buyerPostalCode=".$zip_input;
 			}
 			if (isset($_POST["distance"])){
 				$distance=$_POST["distance"];
@@ -54,11 +58,17 @@
 		$filter_num=0;
 		$url = "https://svcs.ebay.com/services/search/FindingService/v1?OPERATION-NAME=findItemsAdvanced&SERVICE-VERSION=1.0.0&SECURITY-APPNAME=TongLiu-FirstPHP-PRD-d16e5579d-8138441b&RESPONSE-DATA-FORMAT=JSON&REST-PAYLOAD&paginationInput.entriesPerPage=20";
 		$url .= "&keywords=".urlencode($keyword);
-		if($zip_input != ""){
-			$url .= "&buyerPostalCode=".$zip_input;
-		}
+		echo "Nearby"+$Nearby;
+		echo "zip_input"+$zip_input;
 		if($Nearby != ""){
-			if(isset($distance)){
+			if($zip_input != ""){
+				$url .= "&buyerPostalCode=".$zip_input;
+			}
+			else{
+				$url .= "&buyerPostalCode=".$Nearby;
+			}
+			if(!empty($distance)){
+				echo "distance".$distance;
 				$url .= "&itemFilter(".$filter_num.").name=Max_Distance&itemFilter(".$filter_num.").value=".$distance;
 				++$filter_num;
 			}
@@ -192,12 +202,18 @@
 		display: table-cell;
 		padding: 10px 20px;
 	}
+	.detail_img{
+		width: 300px;
+	}
+	.similar_img{
+
+	}
 	.similar_div{
 		width: 800px;
 		overflow-x: auto;
 		overflow-y: hidden;
 		margin: auto; border: 2px solid rgb(182,182,182);
-		visibility: hidden;
+		visibility:hidden;
 	}
 	.detail_iframe{
 		 width: 90%;
@@ -238,7 +254,7 @@
 			<INPUT type=checkbox name=shipping[] value="FS" <?php if(isset($_POST["shipping"])&&(in_array("FS", $_POST["shipping"]))){echo "checked";}?>>Free Shipping 
 
 			<br>
-			<INPUT type=checkbox id="Nearby" name="Nearby" value="Nearby" onclick="change_list()"><b>Enable Nearby Search  </b>
+			<INPUT type=checkbox id="Nearby" name="Nearby" value="Nearby" onclick="change_list()" <?php if(isset($_POST["Nearby"])){echo "checked";}?> ><b>Enable Nearby Search  </b>
 			<div id="distances" class="gray">
 				<input id="distance" name="distance" type="text" placeholder="10" size="5" ><b> miles from</b>
 				<ul id="location_list" name="location_list">
@@ -269,6 +285,7 @@
 	var xhttp = new XMLHttpRequest();
 	var geojson = request_Location_Json();
 	var search = document.getElementById("search");
+	document.getElementById("Nearby").value = geojson["zip"];
 	search.disabled = false;
 	var results;
 	if(<?php echo json_encode($json) ?> != ""){
@@ -325,7 +342,6 @@
 		document.getElementById('zip_input').disabled=false;
 	}
 	function resubmit(element_id){
-		alert(element_id);
 		document.getElementById("item_id").value=element_id;
 		document.getElementById("search_form").submit();
 		
@@ -354,6 +370,7 @@
 			//td.innerHTML= "<img src ="+Item_obj["PictureURL"] + "/>";
 			var image = document.createElement("img");
 			image.src = Item_obj["PictureURL"];
+			image.className = "detail_img";
 			td.appendChild(image);
 		}
 		// Title
@@ -443,11 +460,12 @@
 			else{
 				arrow1.src = "http://csci571.com/hw/hw6/images/arrow_up.png";
 				document.getElementById("detail_iframe").setAttribute("style", "display:block");
+				onload=resizeIframe(document.getElementById("detail_iframe"));
 			}
 
 		};
 		var detail_iframe = document.createElement("div");
-		detail_iframe.innerHTML = "<iframe id=detail_iframe class=detail_iframe src=detail.html frameborder=0 scrolling=no onload=resizeIframe(this)></iframe>";
+		detail_iframe.innerHTML = "<iframe id=detail_iframe class=detail_iframe src=detail.html frameborder=0 scrolling=no></iframe>";
 		show_seller.appendChild(p1);
 		show_seller.appendChild(arrow1);
 		show_seller.appendChild(detail_iframe)
@@ -462,16 +480,17 @@
 		var arrow2 = document.createElement("img");
 		arrow2.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
 		arrow2.className = "arrow";
-		arrow2.onclick = function(){
+		arrow2.onclick = function () {
 			if(arrow2.src == "http://csci571.com/hw/hw6/images/arrow_up.png"){
 				arrow2.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
-				//document.getElementById("similar_div").setAttribute("visibility", "hidden");
+				document.getElementById("similar_div").setAttribute("style", "visibility:hidden");
 			}
 			else{
-				arrow2.src = "http://csci571.com/hw/hw6/images/arrow_down.png";
-				//document.getElementById("similar_div").setAttribute("visibility", "visible");
+				arrow2.src = "http://csci571.com/hw/hw6/images/arrow_up.png";
+				document.getElementById("similar_div").setAttribute("style", "visibility:visible");
 			}
-		}
+
+		};
 		show_similar.appendChild(p2);
 		show_similar.appendChild(arrow2);
 		result_div.appendChild(show_similar);
@@ -491,7 +510,7 @@
 			var html_text = "";
 			for(i=0; i < similar_items.length; i++){
 				var cur_sim = similar_items[i];
-				html_text += "<div class=cell_div><img src=" + cur_sim["imageURL"] + 'alt="centered image"/>';
+				html_text += "<div class=cell_div><img class = similar_img src=" + cur_sim["imageURL"] + 'alt="centered image"/>';
 				html_text += '<p style="text-align:center;">' + cur_sim["title"] + "</p>";
 				html_text += '<p style="text-align:center;">$' + cur_sim["buyItNowPrice"]["__value__"] + "</p>" + "</div>";
 			}
